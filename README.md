@@ -25,6 +25,7 @@ API Delphi HTTP Client Request (ColtAPI) - declaração de interfaces para autom
     end;
   
 >> Exemplos de uso:
+  
   interface
 
   uses
