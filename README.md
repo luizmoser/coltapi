@@ -29,10 +29,36 @@ API Delphi HTTP Client Request (ColtAPI) - declaração de interfaces para autom
     interface
   
     uses
-      colt.net;
-  
+      colt.net; 
+   
+      // >> Internal Types in NetClient (colt.net.pas) <<
+      //   TResponseOK    = type Boolean;
+      //   TResponseCode  = type Integer;
+      //   TResponseText  = type string;
+      //   TResponseData  = type string; // String: Response Data for Status Code (TBytesStream Response)
+      //   TResponseResumeLog  = type string; // ReportStatus Log (resumido - sem header)
+      //   TResponseReportLog  = type string; // ReportStatus Log (completo - com header e response data)
+      //   TResponseComputeLog = type string; // RELEASE: Log Basico (sem header); DEBUG: Log Completo(inclusive header e senhas);
+      
+      // >> Internal Attributes <<
+	  //   input:request (class,methods)
+	  //     soap  class: soapAction (WSDL-WebServices with Envelope)
+	  //     host  class: host path, include Variables
+	  //     base  class: base path, include Variables
+	  //     path  methods: path (url: host + base + path), include Variables
+	  //     meth  GET, POST, etc
+
+	  //   input:names (methods params)
+	  //     name  params: também pode usar no result para indicar um node json especifico
+	  //     head  params: header Net send, include Variables
+	  //     body  params: body Net send, include Variables
+
+	  //   output:response (returns)
+	  //     http  HTTP Status Code
+	  //     json  intercept return - string: json name; Integer: json index array    
+
     type
-  
+      
       TConsumerStatus = record
         status : (stError, stInserted, stUpdated, stDeleted);
         id     : Integer;
@@ -46,6 +72,28 @@ API Delphi HTTP Client Request (ColtAPI) - declaração de interfaces para autom
         regDate: TDateTime;
         active : Boolean;
       end;
+
+    type
+
+      TComplexConsumer = record
+      public
+        function StatusSuccess: Boolean; // result := (StatusCode = 201);
+      public
+       
+        StatusCode : NetClient.TResponseCode; // internal type (automatic set value)
+        StatusText : NetClient.TResponseText; // internal type (automatic set value)
+        Response   : NetClient.TResponse;     // internal type (automatic set value)
+        
+        [jsCase('StatusSuccess')]     // -> StatusSuccess is function (jsCase in colt.json.pas)
+        Data       : TConsumer;       //    StatusSuccess is True e json response contém node "Data" com estrutura de TConsumer
+        
+        [jsCase('StatusCode', 201)]   // -> StatusCode is field (jsCase in colt.json.pas)
+        Consumer   : TConsumer;       //    StatusCode equal 201 e json response contém node "Consumer" com estrutura de TConsumer
+        
+        [jsCase('StatusCode', 400)]   // -> StatusCode is field (jsCase in colt.json.pas)
+        Error      : TErrorMessage;   //    StatusCode equal 400 e json response contém node "Data" com estrutura para TErrorMessage
+     
+     end;
   
     type
   
@@ -68,6 +116,10 @@ API Delphi HTTP Client Request (ColtAPI) - declaração de interfaces para autom
         [path('/consumer')]
         function RegisterConsumer(consumerObject: TConsumer): TConsumerStatus;
   
+        [meth(GET)]
+        [path('/complex/consumer/{id}')]
+        function FindConsumerComplex(id: Integer): TComplexConsumer;
+
       end;
   
     implementation
@@ -86,17 +138,17 @@ API Delphi HTTP Client Request (ColtAPI) - declaração de interfaces para autom
       NetClient.Get(Service);
       Service.AuthenticateBasic('luiz', '123');
   
-      List   := Service.GetConsumers;
-      Item   := Service.FindConsumer(2);
+      List   := Service.GetConsumers;     // -> 1) List All
+      Item   := Service.FindConsumer(2);  // -> 2) List id=2
   
-      Resp := Service.RegisterConsumer(Item);
+      Resp := Service.RegisterConsumer(Item); /// response json = {"status":1,"id":2,"name":"teste"}
       if Resp.status = stError then
         ShowMessage('Ocorreu um erro')
       else
       begin
         case Resp.status of
         stError    : s := 'ERRO';
-        stInserted : s := 'Inserido';
+        stInserted : s := 'Inserido';   // status = 1
         stUpdated  : s := 'Atualizado';
         stDeleted  : s := 'Excluido';
         else
